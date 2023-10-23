@@ -1,0 +1,104 @@
+# pip install telebot
+import time
+import telebot
+from telebot import types
+
+bot = telebot.TeleBot('YOUR_BOT_TOKEN')
+
+# Максимальный размер стикера в КБ и максимальное разрешение стикера
+MAX_STICKER_SIZE = 230 * 1024
+MAX_STICKER_RESOLUTION = (512, 512)
+
+# Словари для отслеживания последнего сообщения бота в личных сообщениях и группах
+last_bot_messages_private = {}
+last_bot_messages_group = {}
+
+# Словари для подсчета количества удаленных стикеров от каждого пользователя в личных сообщениях и группах
+deleted_sticker_count_private = {}
+deleted_sticker_count_group = {}
+
+
+# Обработка команды /start
+@bot.message_handler(commands=['start'])
+def handle_start(message):
+    if message.chat.type == 'private':
+        user_name = message.from_user.username
+        bot.send_message(message.chat.id,
+                         text=f"<b>Привет, {user_name}</b>! 👋\nЭто бот <b>Anti Crash Sticker</b>. Он предназначен для работы в группах и удаляет <b>краш стикеры</b>. Добавьте меня в группу, и я начну свою работу!",
+                         parse_mode="HTML")
+        markup = types.InlineKeyboardMarkup()
+        button1 = types.InlineKeyboardButton(text='➕ Добавить бота в группу ➕', url='YOUR_BOT_INVITE_LINK')
+        markup.add(button1)
+        bot.send_message(message.chat.id, '<b>Чтобы добавить бота в группу, нажмите кнопку</b>', reply_markup=markup,
+                         parse_mode='HTML')
+        time.sleep(0.5)
+        bot.send_message(message.chat.id, "Если вы уже добавили бота в группу, вы можете начать использовать его.")
+
+
+# Проверка стикера на краш и удаление, если пользователь отправляет такой стикер
+@bot.message_handler(content_types=['sticker'])
+def handle_sticker(message):
+    sticker = message.sticker
+    user_name = "@" + message.from_user.username
+
+    # Проверяем условия для стикера
+    conditions_met = check_sticker_conditions(sticker)
+
+    if conditions_met:
+        if message.chat.type == 'private':
+            last_bot_messages = last_bot_messages_private
+            deleted_sticker_count = deleted_sticker_count_private
+        else:
+            last_bot_messages = last_bot_messages_group
+            deleted_sticker_count = deleted_sticker_count_group
+
+        # Удаляем сообщение со стикером
+        bot.delete_message(message.chat.id, message.message_id)
+        time.sleep(0.05)
+
+        # Обновляем или создаем сообщение с количеством удаленных стикеров
+        user_id = message.from_user.id
+        if user_id not in deleted_sticker_count:
+            deleted_sticker_count[user_id] = 1
+        else:
+            deleted_sticker_count[user_id] += 1
+
+        # Проверяем, достиг ли пользователь порога в 50 удаленных стикеров
+        if deleted_sticker_count[user_id] % 50 == 0:
+            message_text = f"От {user_name} было удалено {deleted_sticker_count[user_id]} стикеров."
+            time.sleep(2)
+            bot.send_message(message.chat.id, message_text)
+
+        message_text = f"Был удален стикер от {user_name}, ({deleted_sticker_count[user_id]} раз)"
+        time.sleep(0.05)
+
+        if message.chat.id in last_bot_messages:
+            # Добавляем пробел в конец текста, чтобы он отличался от предыдущего сообщения
+            message_text += " "
+
+            # Обновляем существующее сообщение
+            bot.edit_message_text(chat_id=message.chat.id, message_id=last_bot_messages[message.chat.id].message_id,
+                                  text=message_text)
+        else:
+            # Отправляем новое сообщение с подсчетом
+            new_message = bot.send_message(message.chat.id, message_text)
+            last_bot_messages[message.chat.id] = new_message
+        time.sleep(0.05)
+
+
+# Проверка условий для стикера
+def check_sticker_conditions(sticker):
+    # Проверка размера стикера
+    size_condition = sticker.file_size > MAX_STICKER_SIZE
+
+    # Проверка разрешения стикера
+    resolution_condition = (sticker.width > MAX_STICKER_RESOLUTION[0] or sticker.height > MAX_STICKER_RESOLUTION[1])
+
+    # Проверка формата стикера
+    format_condition = sticker.file_id.startswith("CAACAgIAAxkBAAM")
+
+    return (size_condition + resolution_condition + format_condition) >= 1
+
+
+# Запуск бота
+bot.polling()
