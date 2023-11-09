@@ -3,7 +3,7 @@ import time
 import telebot
 from telebot import types
 
-bot = telebot.TeleBot('YOUR_BOT_TOKEN')
+bot = telebot.TeleBot('Your_bot_Token')
 
 # Максимальный размер стикера в КБ и максимальное разрешение стикера
 MAX_STICKER_SIZE = 230 * 1024
@@ -27,11 +27,10 @@ def handle_start(message):
                          text=f"<b>Привет, {user_name}</b>! 👋\nЭто бот <b>Anti Crash Sticker</b>. Он предназначен для работы в группах и удаляет <b>краш стикеры</b>. Добавьте меня в группу, и я начну свою работу!",
                          parse_mode="HTML")
         markup = types.InlineKeyboardMarkup()
-        button1 = types.InlineKeyboardButton(text='➕ Добавить бота в группу ➕', url='YOUR_BOT_INVITE_LINK')
+        button1 = types.InlineKeyboardButton(text='➕ Добавить бота в группу ➕', url='https://t.me/Your_bot?startgroup=invite')
         markup.add(button1)
         bot.send_message(message.chat.id, '<b>Чтобы добавить бота в группу, нажмите кнопку</b>', reply_markup=markup,
                          parse_mode='HTML')
-        time.sleep(0.5)
         bot.send_message(message.chat.id, "Если вы уже добавили бота в группу, вы можете начать использовать его.")
 
 
@@ -63,11 +62,6 @@ def handle_sticker(message):
         else:
             deleted_sticker_count[user_id] += 1
 
-        # Проверяем, достиг ли пользователь порога в 50 удаленных стикеров
-        if deleted_sticker_count[user_id] % 50 == 0:
-            message_text = f"От {user_name} было удалено {deleted_sticker_count[user_id]} стикеров."
-            bot.send_message(message.chat.id, message_text)
-
         message_text = f"Был удален стикер от {user_name}, ({deleted_sticker_count[user_id]} раз)"
         time.sleep(0.05)
 
@@ -81,7 +75,7 @@ def handle_sticker(message):
         else:
             # Отправляем новое сообщение с подсчетом
             new_message = bot.send_message(message.chat.id, message_text)
-            last_bot_messages[message.chat.id] = new_message
+
         time.sleep(0.05)
 
 
